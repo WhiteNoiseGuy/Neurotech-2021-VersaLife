@@ -1,11 +1,10 @@
 #include <Mouse.h>
 #include <Keyboard.h>
 #include <GyverOS.h>
-#include <powerConstants.h>
-#include <GyverPower.h>
+// #include <GyverPower.h>
 
 
-#define BITRONICS 0
+#define BITRONICS 1
 #define STRELA 1
 #define CALIBBTN 1
 #define LOCKBTN 2
@@ -57,11 +56,11 @@ uint8_t threshold = 135;
 uint8_t lrthreshold = 135;
 uint8_t thresholdFreq = 61;
 
-GyverOS<4 - BITRONICS> OS;
+GyverOS<3 + BITRONICS> OS;
 
 void setup()
 {
-  power.setSleepMode(IDLE_SLEEP);
+  // power.setSleepMode(IDLE_SLEEP);
   
   Serial.begin(115200);
   #if(MOUSE)
@@ -86,7 +85,7 @@ void setup()
 void loop()
 {
   OS.tick();
-  power.sleepDelay(OS.getLeft());
+  delay(OS.getLeft());
 }
 
 void btnTick(){
@@ -156,17 +155,14 @@ void calc() {
 
 void sendData()
 {
-  #if(BITRONICS)
-  Serial.write(F"A0");
+  Serial.write("A0");
   Serial.write(val1[0]);  
-  Serial.write(F"A2");
+  Serial.write("A2");
   Serial.write(map(freq1, 0, 128, 0, 255));
-  Serial.write(F"A1");
+  Serial.write("A1");
   Serial.write(bools.trig1 * 250);
   Serial.write("A3");
   Serial.write(sData1);
-  #endif
-  return;
 }
 
 void makeAMove()
