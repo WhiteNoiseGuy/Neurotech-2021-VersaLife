@@ -1,8 +1,10 @@
-// Пины
-/*#define LED 13
-#define EMG1 A0 */
 #include <Mouse.h>
 #include <Keyboard.h>
+#include <GyverOS.h>
+#include <powerConstants.h>
+#include <GyverPower.h>
+
+
 #define BITRONICS 0
 #define STRELA 1
 #define CALIBBTN 1
@@ -44,42 +46,50 @@ struct
 #define THRESHOLD 25
 #define CLICKTHRESHOLD 60
 #define THRESHOLDFREQ 15
-uint8_t val1[1000];
-uint8_t val2[1000];
-uint16_t maxV1 = 0, minV1 = 0;
-uint16_t maxV2 = 0, minV2 = 0;
-uint16_t sData1 = 0; uint16_t sData2 = 0;
-uint16_t freq1;
-uint16_t freq2;
-uint16_t threshold = 135;
-uint16_t lrthreshold = 135;
-uint16_t thresholdFreq = 61;
+uint8_t val1[500];
+uint8_t val2[500];
+uint8_t maxV1 = 0, minV1 = 0;
+uint8_t maxV2 = 0, minV2 = 0;
+uint8_t sData1 = 0, sData2 = 0;
+uint8_t freq1;
+uint8_t freq2;
+uint8_t threshold = 135;
+uint8_t lrthreshold = 135;
+uint8_t thresholdFreq = 61;
+
+GyverOS<4 - BITRONICS> OS;
 
 void setup()
 {
+  power.setSleepMode(IDLE_SLEEP);
+  
   Serial.begin(115200);
   #if(MOUSE)
   Mouse.begin();
   #endif
-  //Keyboard.begin();
+  Keyboard.begin();
 
   digitalWrite(LED, LOW);
   bools.lock = 1;
   while(millis() < 2000) calc();
   calibrate();
   bools.lock = 0;
+
+  OS.attach(0, calc, 1);
+  OS.attach(1, makeAMove, 2);
+  OS.attach(2, btnTick, 100);
+  #if(BITRONICS)
+  OS.attach(3, sendData, 10);
+  #endif
 }
 
 void loop()
 {
-  static uint32_t timer1 = 0;
-  if(millis() - timer1 >= 1)
-  {
-    timer1 = millis();
-    calc();
-    sendData();
-    makeAMove();
-  }
+  OS.tick();
+  power.sleepDelay(OS.getLeft());
+}
+
+void btnTick(){
   if(digitalRead(CALIBBTN)) calibrate();
   bools.lock ^= (digitalRead(LOCKBTN) && !bools.prevLockBtn);
   bools.prevLockBtn = digitalRead(LOCKBTN);
@@ -99,16 +109,17 @@ void calc() {
     case 1:
       freq1 = 0;
       
-      for(uint8_t i = 999; i > 0; i--)
+      for(uint8_t i = 499; i > 0; i--)
       {
         freq1 += (val1[i] <= 128 && val1[i-1] >= 128) || (val1[i] >= 128 && val1[i-1] <= 128);
         val1[i] = val1[i - 1];
       }
+      freq1 *= 2;
       val1[0] = map(analogRead(EMG1), 0, 1023, 0, 255);
       
       maxV1 = 0;
       minV1 = 0;
-      for (int k = 0; k < arrSize; k++)
+      for (uint16_t k = 0; k < arrSize; k++)
       {
         if (val1[k] > maxV1)
           maxV1 = val1[k];
@@ -120,16 +131,17 @@ void calc() {
     case 2:
       freq2 = 0;
       
-      for(uint8_t i = 999; i > 0; i--)
+      for(uint8_t i = 499; i > 0; i--)
       {
         freq2 += (val2[i] <= 128 && val2[i-1] >= 128) || (val2[i] >= 128 && val2[i-1] <= 128);
         val2[i] = val2[i - 1];
       }
+      freq2 *= 2;
       val2[0] = map(analogRead(EMG2), 0, 1023, 0, 255);
       
       maxV2 = 0;
       minV2 = 0;
-      for (int k = 0; k < arrSize; k++)
+      for (uint16_t k = 0; k < arrSize; k++)
       {
         if (val2[k] > maxV2)
           maxV2 = val2[k];
@@ -145,11 +157,11 @@ void calc() {
 void sendData()
 {
   #if(BITRONICS)
-  Serial.write("A0");
+  Serial.write(F"A0");
   Serial.write(val1[0]);  
-  Serial.write("A2");
+  Serial.write(F"A2");
   Serial.write(map(freq1, 0, 128, 0, 255));
-  Serial.write("A1");
+  Serial.write(F"A1");
   Serial.write(bools.trig1 * 250);
   Serial.write("A3");
   Serial.write(sData1);
