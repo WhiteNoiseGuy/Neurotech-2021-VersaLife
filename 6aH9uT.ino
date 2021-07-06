@@ -1,6 +1,6 @@
 #include <Mouse.h>
 #include <Keyboard.h>
-#define BITRONICS 0
+#define BITRONICS 1
 #define STRELA 1
 #define CALIBBTN 1
 #define LOCKBTN 2
@@ -38,7 +38,7 @@ struct
 } bools;
 
 #define arrSize 150
-#define THRESHOLD 25
+#define THRESHOLD 15
 #define CLICKTHRESHOLD 60
 #define THRESHOLDFREQ 15
 uint8_t val1[500];
@@ -144,13 +144,13 @@ void calc() {
 void sendData()
 {
   #if(BITRONICS)
-  Serial.write(F("A0"));
+  Serial.write("A0");
   Serial.write(val1[0]);  
-  Serial.write(F("A1"));
+  Serial.write("A1");
   Serial.write(map(freq1, 0, 128, 0, 255));
-  Serial.write(F("A2"));
+  Serial.write("A2");
   Serial.write(bools.trig1 * 250);
-  Serial.write(F("A3"));
+  Serial.write("A3");
   Serial.write(sData1);
   #endif
   return;
