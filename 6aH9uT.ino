@@ -4,7 +4,7 @@
 #define STRELA 1
 #define CALIBBTN 1
 #define LOCKBTN 2
-#define MOUSE 1
+#define MOUSE 0
 // Для стрелы
 #if(STRELA)
   #include <Strela.h>
@@ -18,7 +18,7 @@
   #define EMG2 P7
   #define CALIBBTN S1
   #define LOCKBTN S2
-  #define MOUSE 1
+  #define MOUSE 0
 #endif
 
 
@@ -41,8 +41,8 @@ struct
 #define THRESHOLD 15
 #define CLICKTHRESHOLD 60
 #define THRESHOLDFREQ 15
-uint8_t val1[500];
-uint8_t val2[500];
+uint8_t val1[250], val1Filtr[250];
+uint8_t val2[250], val2Filtr[250];
 uint16_t maxV1 = 0, minV1 = 0;
 uint16_t maxV2 = 0, minV2 = 0;
 uint16_t sData1 = 0; uint16_t sData2 = 0;
@@ -96,13 +96,19 @@ void calc() {
     case 1:
       freq1 = 0;
       
-      for(uint8_t i = 499; i > 0; i--)
+      for(uint8_t i = 249; i > 0; i--)
       {
-        freq1 += (val1[i] <= 128 && val1[i-1] >= 128) || (val1[i] >= 128 && val1[i-1] <= 128);
+        // freq1 += (val1[i] <= 128 && val1[i-1] >= 128) || (val1[i] >= 128 && val1[i-1] <= 128);
         val1[i] = val1[i - 1];
       }
-      freq1 *= 2;
+      for(uint8_t i = 249; i > 0; i--)
+      {
+        freq1 += (val1Filtr[i] <= 128 && val1Filtr[i-1] >= 128) || (val1Filtr[i] >= 128 && val1Filtr[i-1] <= 128);
+        val1Filtr[i] = val1Filtr[i - 1];
+      }
+      freq1 *= 4;
       val1[0] = analogRead(EMG1) >> 2;
+      val1Filtr[0] = (7 * val1Filtr[0] + val1[0]) >> 3;
       
       maxV1 = 0;
       minV1 = 0;
@@ -118,13 +124,18 @@ void calc() {
     case 2:
       freq2 = 0;
       
-      for(uint8_t i = 499; i > 0; i--)
+      for(uint8_t i = 249; i > 0; i--)
       {
         freq2 += (val2[i] <= 128 && val2[i-1] >= 128) || (val2[i] >= 128 && val2[i-1] <= 128);
         val2[i] = val2[i - 1];
       }
-      freq2 *= 2;
+      freq2 *= 4;
+      for(uint8_t i = 249; i > 0; i--)
+      {
+        val2Filtr[i] = val2Filtr[i - 1];
+      }
       val2[0] = analogRead(EMG2) >> 2;
+      val2Filtr[0] = (7 * val2Filtr[0] + val2[0]) >> 3;
       
       maxV2 = 0;
       minV2 = 0;
@@ -149,7 +160,7 @@ void sendData()
   Serial.write("A1");
   Serial.write(map(freq1, 0, 128, 0, 255));
   Serial.write("A2");
-  Serial.write(bools.trig1 * 250);
+  Serial.write(val1Filtr[0]);
   Serial.write("A3");
   Serial.write(sData1);
   #endif
